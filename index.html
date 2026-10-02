@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QR-RMS · Quarry Road Rescue Management System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --stone:#EDEFEA; --paper:#FFFFFF; --ink:#1C2421; --muted:#5B6660; --line:#CFD5CF;
+  --moss:#2F5D46; --moss-ink:#FFFFFF; --moss-soft:#DCE8E0;
+  --avail:#2F7D4F; --avail-bg:#DDF0E3;
+  --pend:#6A4C93; --pend-bg:#ECE4F6;
+  --hold:#9A6200; --hold-bg:#FCEBC7;
+  --adopt:#2F5588; --adopt-bg:#DFE8F5;
+  --danger:#A3312A; --danger-bg:#F8E0DE;
+  --focus:#C98A1B;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --stone:#141A17; --paper:#1D2521; --ink:#E6EBE7; --muted:#9AA69F; --line:#34403A;
+    --moss:#5FA37F; --moss-ink:#0E1512; --moss-soft:#24382D;
+    --avail:#7ED3A0; --avail-bg:#1F3A2A; --pend:#C3A8EA; --pend-bg:#2E2540;
+    --hold:#F2C06A; --hold-bg:#3D2F12; --adopt:#9DBDEB; --adopt-bg:#1F2E44;
+    --danger:#F0908A; --danger-bg:#442221;
+  }
+}
+:root[data-theme="dark"]{
+  --stone:#141A17; --paper:#1D2521; --ink:#E6EBE7; --muted:#9AA69F; --line:#34403A;
+  --moss:#5FA37F; --moss-ink:#0E1512; --moss-soft:#24382D;
+  --avail:#7ED3A0; --avail-bg:#1F3A2A; --pend:#C3A8EA; --pend-bg:#2E2540;
+  --hold:#F2C06A; --hold-bg:#3D2F12; --adopt:#9DBDEB; --adopt-bg:#1F2E44;
+  --danger:#F0908A; --danger-bg:#442221;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--stone);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:17px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+a{color:var(--moss)}
+.wrap{max-width:960px;margin:0 auto;padding:0 18px}
+
+header.bar{background:var(--moss);color:var(--moss-ink)}
+header.bar .wrap{display:flex;align-items:center;gap:14px;min-height:60px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:1.15rem;letter-spacing:.01em;margin-right:auto}
+.brand small{display:block;font-weight:400;font-size:.8rem;opacity:.85}
+.who{font-size:.9rem;text-align:right}
+.who b{display:block}
+.btn-ghost{background:transparent;border:1.5px solid currentColor;color:inherit;border-radius:6px;padding:6px 12px;cursor:pointer}
+
+nav.tabs{background:var(--paper);border-bottom:1px solid var(--line)}
+nav.tabs .wrap{display:flex;gap:4px;overflow-x:auto}
+nav.tabs a{padding:14px 14px 12px;text-decoration:none;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--moss);font-weight:700}
+
+main{padding:24px 0 60px}
+h1{font-size:1.6rem;margin:0 0 4px;line-height:1.25}
+.lede{color:var(--muted);margin:0 0 20px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:20px}
+
+.search{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.search input{flex:1 1 260px;padding:12px 14px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.chip{border:1.5px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 14px;cursor:pointer;font-size:.92rem}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+.list{list-style:none;margin:0;padding:0;background:var(--paper);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.list li+li{border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:96px 1fr auto;gap:14px;align-items:center;padding:14px 16px;text-decoration:none;color:inherit}
+.row:hover{background:var(--moss-soft)}
+.row .id{font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.row .name{font-weight:700}
+.row .meta{color:var(--muted);font-size:.9rem}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+
+.pill{display:inline-block;padding:3px 11px;border-radius:999px;font-size:.85rem;font-weight:700;white-space:nowrap}
+.s-Available{background:var(--avail-bg);color:var(--avail)}
+.s-Pending{background:var(--pend-bg);color:var(--pend)}
+.s-OnHold{background:var(--hold-bg);color:var(--hold)}
+.s-Adopted{background:var(--adopt-bg);color:var(--adopt)}
+
+.detail-head{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.detail-head h1{margin-right:auto}
+dl.facts{display:grid;grid-template-columns:minmax(130px,200px) 1fr;gap:10px 18px;margin:0}
+dl.facts dt{color:var(--muted)}
+dl.facts dd{margin:0}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.btn{border:0;border-radius:8px;padding:11px 18px;cursor:pointer;font-weight:700;text-decoration:none;display:inline-block}
+.btn-primary{background:var(--moss);color:var(--moss-ink)}
+.btn-hold{background:var(--hold);color:var(--paper)}
+.btn-line{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-danger{background:transparent;border:1.5px solid var(--danger);color:var(--danger)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.back{display:inline-block;margin-bottom:14px}
+
+.holdnote{background:var(--hold-bg);color:var(--ink);border-left:4px solid var(--hold);padding:12px 14px;border-radius:6px;margin-bottom:18px}
+
+form .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.full{grid-column:1/-1}
+.field label{font-weight:700;font-size:.95rem}
+.field .hint{color:var(--muted);font-size:.85rem}
+.field input,.field select,.field textarea{padding:11px 12px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper)}
+.field textarea{min-height:90px;resize:vertical}
+.field input[readonly]{background:var(--stone);color:var(--muted)}
+.field.bad input,.field.bad select{border-color:var(--danger)}
+.err{color:var(--danger);font-size:.88rem}
+.alert{padding:12px 14px;border-radius:8px;margin-bottom:16px;border-left:4px solid}
+.alert-danger{background:var(--danger-bg);border-color:var(--danger)}
+.alert-warn{background:var(--hold-bg);border-color:var(--hold)}
+
+.tablewrap{overflow-x:auto;background:var(--paper);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:720px}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.88rem;color:var(--muted);font-weight:700;background:var(--stone)}
+tr:last-child td{border-bottom:0}
+td:first-child,td span[style]{white-space:nowrap}
+.left{font-weight:700;font-variant-numeric:tabular-nums}
+.left.soon{color:var(--hold)}
+.left.gone{color:var(--danger)}
+.summary{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:18px}
+.summary div{font-size:.95rem;color:var(--muted)}
+.summary b{display:block;font-size:1.6rem;color:var(--ink)}
+
+.login{min-height:100%;display:grid;place-items:center;padding:30px 18px}
+.login-card{width:100%;max-width:420px}
+.login-card .mark{width:54px;height:54px;border-radius:12px;background:var(--moss);color:var(--moss-ink);display:grid;place-items:center;font-weight:700;font-size:1.3rem;margin-bottom:16px}
+.login-card form{display:flex;flex-direction:column;gap:14px;margin-top:18px}
+.demo{margin-top:22px;font-size:.9rem;color:var(--muted)}
+.demo table{min-width:0;font-size:.88rem}
+.demo td,.demo th{padding:7px 8px}
+.demo button{background:none;border:0;color:var(--moss);text-decoration:underline;cursor:pointer;padding:0}
+
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);padding:12px 20px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100% - 36px)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+footer{color:var(--muted);font-size:.85rem;padding:0 0 30px}
+footer button{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:0}
+@media (max-width:640px){
+  form .grid{grid-template-columns:1fr}
+  .row{grid-template-columns:1fr auto}
+  .row .id{grid-column:1/-1;font-size:.85rem}
+  dl.facts{grid-template-columns:1fr}
+  dl.facts dt{margin-top:8px}
+  .who{display:none}
+}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+"use strict";
+const USERS = {
+  coordinator:{password:"coord2026", name:"Renata Vance", role:"Coordinator"},
+  kim:{password:"adopt2026", name:"Kim", role:"Adoption Coordinator"},
+  volunteer:{password:"vol2026", name:"Sam Ortiz", role:"Volunteer"}
+};
+const PERMS = {
+  "Coordinator":{edit:true, hold:true, viewHolds:true, release:true},
+  "Adoption Coordinator":{edit:false, hold:true, viewHolds:true, release:true},
+  "Volunteer":{edit:false, hold:true, viewHolds:false, release:false}
+};
+const STATUSES = ["Available","Pending","On Hold","Adopted"];
+const HOLD_HOURS = 48;
+const KEY = "qrrms-sprint1-v1";
+const H = 3600000;
+
+function seed(){
+  const now = Date.now();
+  const animals = [
+    ["QR-1001","Biscuit","Dog","Beagle mix","Male","2 years","Tan and white","2026-08-02","Owner surrender","Foster: Patel home","Available","Good with kids. Crate trained."],
+    ["QR-1002","Juniper","Cat","Domestic shorthair","Female","8 months","Grey tabby","2026-08-11","Stray (Tippecanoe County)","Storefront","On Hold","Shy at first, warms up quickly."],
+    ["QR-1003","Moose","Dog","Lab / Shepherd mix","Male","4 years","Black","2026-07-20","Transfer from county shelter","Foster: Nguyen home","Pending","Needs fenced yard."],
+    ["QR-1004","Pepper","Cat","Domestic longhair","Female","3 years","Black and white","2026-06-30","Owner surrender","Adopted","Adopted","Adopted 09/06/2026."],
+    ["QR-1005","Tater","Dog","Chihuahua","Male","6 years","Fawn","2026-08-19","Stray (Lafayette)","Foster: Brooks home","Available","Senior-friendly home preferred."],
+    ["QR-1006","Clementine","Cat","Orange tabby","Female","1 year","Orange","2026-09-01","Hoarding case","Storefront","Available","Bonded with QR-1007."],
+    ["QR-1007","Marmalade","Cat","Orange tabby","Male","1 year","Orange","2026-09-01","Hoarding case","Storefront","Available","Bonded with QR-1006."],
+    ["QR-1008","Rosie","Dog","Pit bull mix","Female","3 years","Brindle","2026-08-27","Transfer from county shelter","Foster: Alvarez home","On Hold","Loves car rides."],
+    ["QR-1009","Pickles","Rabbit","Holland Lop","Male","2 years","Brown","2026-09-09","Owner surrender","Foster: Kim home","Available","Litter trained."]
+  ].map(a=>({id:a[0],name:a[1],species:a[2],breed:a[3],sex:a[4],age:a[5],color:a[6],intakeDate:a[7],intakeSource:a[8],location:a[9],status:a[10],notes:a[11],updatedAt:now-5*24*H,updatedBy:"Renata Vance"}));
+  const holds = [
+    {holdId:"H-501",animalId:"QR-1002",adopter:"Dana Whitfield",phone:"765-555-0142",email:"dana.w@example.com",visit:"Saturday adoption event",placedBy:"Sam Ortiz",placedAt:now-30*H,expiresAt:now+18*H,active:true},
+    {holdId:"H-502",animalId:"QR-1008",adopter:"Marcus Lee",phone:"765-555-0199",email:"mlee@example.com",visit:"Meet and greet at foster home",placedBy:"Kim",placedAt:now-47*H,expiresAt:now+1*H,active:true}
+  ];
+  return {animals, holds, nextId:1010, nextHold:503};
+}
+let db;
+function load(){
+  try{ const raw = localStorage.getItem(KEY); db = raw ? JSON.parse(raw) : null; }catch(e){ db = null; }
+  if(!db || !Array.isArray(db.animals)) db = seed();
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){} }
+function getUser(){ try{ const u = sessionStorage.getItem("qrrms-user"); return u && USERS[u] ? Object.assign({username:u},USERS[u]) : null; }catch(e){ return window.__u || null; } }
+function setUser(u){ try{ u ? sessionStorage.setItem("qrrms-user",u) : sessionStorage.removeItem("qrrms-user"); }catch(e){} window.__u = u ? Object.assign({username:u},USERS[u]) : null; }
+
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const cls = s => "s-" + s.replace(/\s/g,"");
+const pill = s => `<span class="pill ${cls(s)}">${esc(s)}</span>`;
+const fmt = t => new Date(t).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+const fmtDate = d => d ? new Date(d+"T00:00:00").toLocaleDateString([], {month:"short",day:"numeric",year:"numeric"}) : "";
+const find = id => db.animals.find(a=>a.id.toLowerCase()===String(id).toLowerCase());
+const activeHold = id => db.holds.find(h=>h.active && h.animalId===id);
+function left(ms){
+  if(ms<=0) return {txt:"Expired",c:"gone"};
+  const h = Math.floor(ms/H), m = Math.floor((ms%H)/60000);
+  return {txt:`${h}h ${m}m`, c: ms<6*H ? "soon" : ""};
+}
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),2800); }
+const app = document.getElementById("app");
+let filter = {q:"", status:"All"};
+
+function shell(user, active, body){
+  const p = PERMS[user.role];
+  const tabs = [["#/animals","Animals","animals"]];
+  if(p.edit) tabs.push(["#/new","Add animal","new"]);
+  if(p.viewHolds) tabs.push(["#/holds","Active holds","holds"]);
+  app.innerHTML = `
+  <header class="bar"><div class="wrap">
+    <div class="brand">QR-RMS<small>Quarry Road Rescue Management System</small></div>
+    <div class="who"><b>${esc(user.name)}</b>${esc(user.role)}</div>
+    <button class="btn-ghost" id="logout">Log out</button>
+  </div></header>
+  <nav class="tabs" aria-label="Main menu"><div class="wrap">
+    ${tabs.map(t=>`<a href="${t[0]}" ${t[2]===active?'aria-current="page"':""}>${t[1]}</a>`).join("")}
+  </div></nav>
+  <main><div class="wrap">${body}</div></main>
+  <footer><div class="wrap">Sprint 1 prototype. Data is saved in this browser only. <button id="reset">Reset demo data</button></div></footer>`;
+  document.getElementById("logout").onclick=()=>{ setUser(null); location.hash="#/login"; render(); };
+  document.getElementById("reset").onclick=()=>{ if(confirm("Reset all animals and holds to the original demo data?")){ db=seed(); save(); toast("Demo data reset"); render(); } };
+}
+
+function viewLogin(msg){
+  app.innerHTML = `<div class="login"><div class="login-card panel">
+    <div class="mark" aria-hidden="true">QR</div>
+    <h1>Sign in to QR-RMS</h1>
+    <p class="lede" style="margin:0">Quarry Road Animal Rescue staff, volunteers and fosters.</p>
+    ${msg?`<div class="alert alert-danger" role="alert" style="margin:16px 0 0">${esc(msg)}</div>`:""}
+    <form id="lf" novalidate>
+      <div class="field"><label for="u">Username</label><input id="u" autocomplete="username" required></div>
+      <div class="field"><label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required></div>
+      <button class="btn btn-primary" type="submit">Sign in</button>
+    </form>
+    <div class="demo"><p style="margin:0 0 8px">Demo accounts (select one to fill the form):</p>
+    <table><thead><tr><th>Role</th><th>Username</th><th>Password</th></tr></thead><tbody>
+    ${Object.entries(USERS).map(([u,v])=>`<tr><td>${esc(v.role)}</td><td><button type="button" data-u="${u}">${u}</button></td><td>${esc(v.password)}</td></tr>`).join("")}
+    </tbody></table></div>
+  </div></div>`;
+  app.querySelectorAll("[data-u]").forEach(b=>b.onclick=()=>{ document.getElementById("u").value=b.dataset.u; document.getElementById("p").value=USERS[b.dataset.u].password; document.getElementById("p").focus(); });
+  document.getElementById("lf").onsubmit=e=>{
+    e.preventDefault();
+    const u=document.getElementById("u").value.trim().toLowerCase(), p=document.getElementById("p").value;
+    if(!u||!p) return viewLogin("Enter both a username and a password.");
+    if(!USERS[u]||USERS[u].password!==p) return viewLogin("That username and password don't match. Check the demo accounts below.");
+    setUser(u); location.hash="#/animals"; render();
+  };
+  document.getElementById("u").focus();
+}
+
+function viewAnimals(user){
+  const counts = {}; STATUSES.forEach(s=>counts[s]=db.animals.filter(a=>a.status===s).length);
+  shell(user,"animals",`
+    <h1>Animals</h1>
+    <p class="lede">Search by animal ID or name. Select an animal to open its record.</p>
+    <div class="search" role="search">
+      <label for="q" class="sr" style="position:absolute;left:-9999px">Search animals</label>
+      <input id="q" type="search" placeholder="Animal ID or name, e.g. QR-1005 or Tater" value="${esc(filter.q)}">
+    </div>
+    <div class="chips" role="group" aria-label="Filter by status">
+      ${["All",...STATUSES].map(s=>`<button class="chip" data-s="${s}" aria-pressed="${filter.status===s}">${s}${s==="All"?` (${db.animals.length})`:` (${counts[s]})`}</button>`).join("")}
+    </div>
+    <ul class="list" id="results"></ul>`);
+  const q = document.getElementById("q");
+  const draw = ()=>{
+    const term = filter.q.trim().toLowerCase();
+    const rows = db.animals.filter(a=>(filter.status==="All"||a.status===filter.status) && (!term || a.id.toLowerCase().includes(term) || a.name.toLowerCase().includes(term)))
+      .sort((a,b)=>a.id.localeCompare(b.id));
+    document.getElementById("results").innerHTML = rows.length ? rows.map(a=>`<li><a class="row" href="#/animal/${a.id}">
+      <span class="id">${a.id}</span>
+      <span><span class="name">${esc(a.name)}</span><br><span class="meta">${esc(a.species)} · ${esc(a.breed)} · ${esc(a.location)}</span></span>
+      ${pill(a.status)}</a></li>`).join("")
+      : `<li class="empty">No animal matches “${esc(filter.q)}”${filter.status!=="All"?` with status ${esc(filter.status)}`:""}. Check the ID format (QR-####) or clear the filter.</li>`;
+  };
+  q.oninput=()=>{ filter.q=q.value; draw(); };
+  app.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{ filter.status=c.dataset.s; app.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed",x===c)); draw(); });
+  draw();
+}
+
+function viewAnimal(user,id){
+  const a = find(id), p = PERMS[user.role];
+  if(!a){ shell(user,"animals",`<a class="back" href="#/animals">Back to animals</a><div class="panel">No animal record with ID ${esc(id)} exists.</div>`); return; }
+  const h = activeHold(a.id);
+  const L = h ? left(h.expiresAt-Date.now()) : null;
+  shell(user,"animals",`
+    <a class="back" href="#/animals">Back to animals</a>
+    <div class="panel">
+      <div class="detail-head"><h1>${esc(a.name)} <span style="color:var(--muted);font-weight:400">${a.id}</span></h1>${pill(a.status)}</div>
+      ${h?`<div class="holdnote">Adoption hold ${h.holdId} for <b>${esc(h.adopter)}</b>, placed by ${esc(h.placedBy)} on ${fmt(h.placedAt)}. ${L.c==="gone"?"This hold has expired and is waiting to be released.":`Expires ${fmt(h.expiresAt)} (${L.txt} left).`}</div>`:""}
+      <dl class="facts">
+        <dt>Species</dt><dd>${esc(a.species)}</dd>
+        <dt>Breed</dt><dd>${esc(a.breed)}</dd>
+        <dt>Sex</dt><dd>${esc(a.sex)}</dd>
+        <dt>Age (estimated)</dt><dd>${esc(a.age)}</dd>
+        <dt>Color / markings</dt><dd>${esc(a.color)}</dd>
+        <dt>Intake date</dt><dd>${fmtDate(a.intakeDate)}</dd>
+        <dt>Intake source</dt><dd>${esc(a.intakeSource)}</dd>
+        <dt>Current location</dt><dd>${esc(a.location)}</dd>
+        <dt>Notes</dt><dd>${esc(a.notes)||"None"}</dd>
+        <dt>Last updated</dt><dd>${fmt(a.updatedAt)} by ${esc(a.updatedBy)}</dd>
+      </dl>
+      <div class="actions">
+        ${p.edit?`<a class="btn btn-primary" href="#/edit/${a.id}">Edit record</a>`:""}
+        ${p.hold?(a.status==="Available"?`<a class="btn btn-hold" href="#/hold/${a.id}">Place adoption hold</a>`:`<button class="btn btn-hold" id="holdBlocked">Place adoption hold</button>`):""}
+        ${p.release&&h?`<button class="btn btn-danger" id="rel">Release hold</button>`:""}
+      </div>
+      <div id="blockMsg"></div>
+    </div>`);
+  const hb=document.getElementById("holdBlocked");
+  if(hb) hb.onclick=()=>{ document.getElementById("blockMsg").innerHTML=`<div class="alert alert-danger" role="alert" style="margin:16px 0 0">${esc(a.name)} can't be placed on hold because its status is ${esc(a.status)}. ${h?`Hold ${h.holdId} for ${esc(h.adopter)} is already active.`:"Only Available animals can be held."}</div>`; };
+  const rel=document.getElementById("rel");
+  if(rel) rel.onclick=()=>releaseHold(user,h.holdId,()=>viewAnimal(user,a.id));
+}
+
+function viewForm(user,id){
+  const p=PERMS[user.role];
+  if(!p.edit){ shell(user,"animals",`<div class="alert alert-danger">Your role (${esc(user.role)}) can view animal records but can't create or edit them.</div><a href="#/animals">Back to animals</a>`); return; }
+  const editing = id ? find(id) : null;
+  if(id && !editing){ location.hash="#/animals"; return; }
+  const a = editing || {id:"QR-"+db.nextId,name:"",species:"",breed:"",sex:"",age:"",color:"",intakeDate:new Date().toISOString().slice(0,10),intakeSource:"",location:"Storefront",status:"Available",notes:""};
+  const onHold = editing && editing.status==="On Hold";
+  const opt = (list,val)=>list.map(o=>`<option ${o===val?"selected":""}>${o}</option>`).join("");
+  shell(user, editing?"animals":"new", `
+    <a class="back" href="${editing?`#/animal/${a.id}`:"#/animals"}">${editing?"Back to record":"Back to animals"}</a>
+    <h1>${editing?`Edit ${esc(a.name)}`:"Add an animal"}</h1>
+    <p class="lede">${editing?"Update the fields that changed, then save.":"Required fields are marked. The animal ID is assigned automatically."}</p>
+    <div id="formAlert"></div>
+    <form id="af" class="panel" novalidate>
+      <div class="grid">
+        <div class="field"><label for="f-id">Animal ID</label><input id="f-id" value="${a.id}" readonly></div>
+        <div class="field"><label for="f-status">Status</label>
+          ${onHold?`<input id="f-status" value="On Hold" readonly><span class="hint">Set by an active adoption hold. Release the hold to change it.</span>`
+          :`<select id="f-status">${opt(["Available","Pending","Adopted"],a.status)}</select><span class="hint">On Hold is set only by placing an adoption hold.</span>`}
+        </div>
+        <div class="field"><label for="f-name">Name *</label><input id="f-name" value="${esc(a.name)}"></div>
+        <div class="field"><label for="f-species">Species *</label><select id="f-species"><option value="">Select</option>${opt(["Dog","Cat","Rabbit","Other"],a.species)}</select></div>
+        <div class="field"><label for="f-breed">Breed</label><input id="f-breed" value="${esc(a.breed)}"></div>
+        <div class="field"><label for="f-sex">Sex *</label><select id="f-sex"><option value="">Select</option>${opt(["Male","Female","Unknown"],a.sex)}</select></div>
+        <div class="field"><label for="f-age">Age (estimated)</label><input id="f-age" value="${esc(a.age)}" placeholder="e.g. 2 years"></div>
+        <div class="field"><label for="f-color">Color / markings</label><input id="f-color" value="${esc(a.color)}"></div>
+        <div class="field"><label for="f-intake">Intake date *</label><input id="f-intake" type="date" value="${a.intakeDate}"></div>
+        <div class="field"><label for="f-src">Intake source *</label><input id="f-src" value="${esc(a.intakeSource)}" placeholder="e.g. Owner surrender, Stray, Transfer"></div>
+        <div class="field full"><label for="f-loc">Current location *</label><input id="f-loc" value="${esc(a.location)}" placeholder="e.g. Storefront or Foster: Patel home"></div>
+        <div class="field full"><label for="f-notes">Notes</label><textarea id="f-notes">${esc(a.notes)}</textarea></div>
+      </div>
+      <div class="actions"><button class="btn btn-primary" type="submit">${editing?"Save changes":"Save animal record"}</button>
+      <a class="btn btn-line" href="${editing?`#/animal/${a.id}`:"#/animals"}">Cancel</a></div>
+    </form>`);
+  let dupConfirmed=false;
+  document.getElementById("af").onsubmit=e=>{
+    e.preventDefault();
+    const v = k=>document.getElementById(k).value.trim();
+    const data={name:v("f-name"),species:v("f-species"),breed:v("f-breed"),sex:v("f-sex"),age:v("f-age"),color:v("f-color"),intakeDate:v("f-intake"),intakeSource:v("f-src"),location:v("f-loc"),notes:v("f-notes")};
+    const req={"f-name":"name","f-species":"species","f-sex":"sex","f-intake":"intakeDate","f-src":"intakeSource","f-loc":"location"};
+    let missing=[];
+    app.querySelectorAll(".field").forEach(f=>f.classList.remove("bad"));
+    Object.entries(req).forEach(([fid,k])=>{ if(!data[k]){ missing.push(document.querySelector(`label[for=${fid}]`).textContent.replace(" *","")); document.getElementById(fid).parentElement.classList.add("bad"); }});
+    const alertBox=document.getElementById("formAlert");
+    if(missing.length){ alertBox.innerHTML=`<div class="alert alert-danger" role="alert">Fill in the required fields before saving: ${missing.join(", ")}.</div>`; window.scrollTo(0,0); return; }
+    if(!editing && !dupConfirmed){
+      const dup=db.animals.find(x=>x.name.toLowerCase()===data.name.toLowerCase() && x.species===data.species && x.intakeDate===data.intakeDate);
+      if(dup){ dupConfirmed=true; alertBox.innerHTML=`<div class="alert alert-warn" role="alert">A ${esc(dup.species.toLowerCase())} named ${esc(dup.name)} with the same intake date already exists as <a href="#/animal/${dup.id}">${dup.id}</a>. Open that record to update it, or select Save again to create a separate record.</div>`; window.scrollTo(0,0); return; }
+    }
+    const statusEl=document.getElementById("f-status");
+    data.status = onHold ? "On Hold" : statusEl.value;
+    data.updatedAt=Date.now(); data.updatedBy=user.name;
+    if(editing){ Object.assign(editing,data); save(); toast(`${editing.name} (${editing.id}) saved`); location.hash="#/animal/"+editing.id; }
+    else { const rec=Object.assign({id:"QR-"+db.nextId},data); db.nextId++; db.animals.push(rec); save(); toast(`${rec.name} saved as ${rec.id}`); location.hash="#/animal/"+rec.id; }
+  };
+}
+
+function viewHold(user,id){
+  const a=find(id);
+  if(!a){ location.hash="#/animals"; return; }
+  if(a.status!=="Available"){ viewAnimal(user,id); return; }
+  const tomorrow=new Date(Date.now()+H*24).toISOString().slice(0,10);
+  shell(user,"animals",`
+    <a class="back" href="#/animal/${a.id}">Back to record</a>
+    <h1>Place an adoption hold on ${esc(a.name)}</h1>
+    <p class="lede">The hold reserves ${esc(a.name)} (${a.id}) for one adopter for ${HOLD_HOURS} hours so no other family can be booked for the same animal.</p>
+    <div id="formAlert"></div>
+    <form id="hf" class="panel" novalidate>
+      <div class="grid">
+        <div class="field full"><label for="h-name">Adopter full name *</label><input id="h-name" autocomplete="off"></div>
+        <div class="field"><label for="h-phone">Phone *</label><input id="h-phone" type="tel" placeholder="765-555-0100"></div>
+        <div class="field"><label for="h-email">Email</label><input id="h-email" type="email"></div>
+        <div class="field"><label for="h-visit">Planned visit</label><select id="h-visit"><option>Saturday adoption event</option><option>Meet and greet at storefront</option><option>Meet and greet at foster home</option></select></div>
+        <div class="field"><label for="h-date">Visit date</label><input id="h-date" type="date" value="${tomorrow}"></div>
+      </div>
+      <div class="actions"><button class="btn btn-hold" type="submit">Place hold</button><a class="btn btn-line" href="#/animal/${a.id}">Cancel</a></div>
+    </form>`);
+  document.getElementById("hf").onsubmit=e=>{
+    e.preventDefault();
+    const v=k=>document.getElementById(k).value.trim();
+    const box=document.getElementById("formAlert");
+    const cur=find(id);
+    if(cur.status!=="Available"||activeHold(cur.id)){ const h=activeHold(cur.id); box.innerHTML=`<div class="alert alert-danger" role="alert">${esc(cur.name)} was just placed on hold${h?` for ${esc(h.adopter)} by ${esc(h.placedBy)}`:""}. Choose another animal.</div>`; return; }
+    const missing=[]; if(!v("h-name"))missing.push("Adopter full name"); if(!v("h-phone"))missing.push("Phone");
+    const phoneOk=/^[\d\s().+-]{7,}$/.test(v("h-phone"));
+    if(missing.length||(!missing.includes("Phone")&&!phoneOk)){ box.innerHTML=`<div class="alert alert-danger" role="alert">${missing.length?`Fill in: ${missing.join(", ")}.`:"Enter the phone number using digits, e.g. 765-555-0100."}</div>`; return; }
+    const now=Date.now();
+    const hold={holdId:"H-"+db.nextHold,animalId:cur.id,adopter:v("h-name"),phone:v("h-phone"),email:v("h-email"),visit:v("h-visit")+(v("h-date")?` on ${fmtDate(v("h-date"))}`:""),placedBy:user.name,placedAt:now,expiresAt:now+HOLD_HOURS*H,active:true};
+    db.nextHold++; db.holds.push(hold);
+    cur.status="On Hold"; cur.updatedAt=now; cur.updatedBy=user.name;
+    save(); toast(`Hold ${hold.holdId} placed on ${cur.name} for ${hold.adopter}`);
+    location.hash="#/animal/"+cur.id;
+  };
+}
+
+function releaseHold(user,holdId,after){
+  const h=db.holds.find(x=>x.holdId===holdId); if(!h||!h.active) return;
+  const a=find(h.animalId);
+  if(!confirm(`Release hold ${h.holdId} on ${a?a.name:h.animalId} for ${h.adopter}? The animal will return to Available.`)) return;
+  h.active=false; h.releasedAt=Date.now(); h.releasedBy=user.name;
+  if(a&&a.status==="On Hold"){ a.status="Available"; a.updatedAt=Date.now(); a.updatedBy=user.name; }
+  save(); toast(`Hold ${h.holdId} released. ${a?a.name:""} is Available`); after();
+}
+
+function viewHolds(user){
+  const p=PERMS[user.role];
+  if(!p.viewHolds){ shell(user,"animals",`<div class="alert alert-danger">Your role (${esc(user.role)}) can't view the active holds list.</div><a href="#/animals">Back to animals</a>`); return; }
+  const now=Date.now();
+  const act=db.holds.filter(h=>h.active).sort((a,b)=>a.expiresAt-b.expiresAt);
+  const soon=act.filter(h=>h.expiresAt-now>0&&h.expiresAt-now<6*H).length, gone=act.filter(h=>h.expiresAt<=now).length;
+  const recent=db.holds.filter(h=>!h.active).sort((a,b)=>b.releasedAt-a.releasedAt).slice(0,5);
+  shell(user,"holds",`
+    <h1>Active adoption holds</h1>
+    <p class="lede">Each animal can have only one active hold. Holds expire ${HOLD_HOURS} hours after they're placed.</p>
+    <div class="summary"><div><b>${act.length}</b>active holds</div><div><b>${soon}</b>expiring within 6 hours</div><div><b>${gone}</b>expired, not yet released</div></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Hold</th><th>Animal</th><th>Adopter</th><th>Visit</th><th>Placed by</th><th>Expires</th><th>Time left</th><th></th></tr></thead>
+      <tbody>${act.length?act.map(h=>{const a=find(h.animalId)||{name:"?"};const L=left(h.expiresAt-now);return `<tr>
+        <td>${h.holdId}</td>
+        <td><a href="#/animal/${h.animalId}">${esc(a.name)}</a><br><span style="color:var(--muted);font-size:.88rem">${h.animalId}</span></td>
+        <td>${esc(h.adopter)}<br><span style="color:var(--muted);font-size:.88rem">${esc(h.phone)}</span></td>
+        <td>${esc(h.visit)}</td>
+        <td>${esc(h.placedBy)}<br><span style="color:var(--muted);font-size:.88rem">${fmt(h.placedAt)}</span></td>
+        <td>${fmt(h.expiresAt)}</td>
+        <td><span class="left ${L.c}">${L.txt}</span></td>
+        <td>${p.release?`<button class="btn btn-danger" data-rel="${h.holdId}" style="padding:7px 12px">Release</button>`:""}</td></tr>`}).join("")
+        :`<tr><td colspan="8" class="empty">No active holds. Volunteers can place a hold from any Available animal's record.</td></tr>`}</tbody>
+    </table></div>
+    ${recent.length?`<h2 style="font-size:1.15rem;margin:28px 0 10px">Recently released</h2><ul class="list">${recent.map(h=>{const a=find(h.animalId)||{name:"?"};return `<li class="row" style="grid-template-columns:70px 1fr"><span class="id">${h.holdId}</span><span>${esc(a.name)} (${h.animalId}) for ${esc(h.adopter)}<br><span class="meta">Released by ${esc(h.releasedBy)} on ${fmt(h.releasedAt)}</span></span></li>`}).join("")}</ul>`:""}`);
+  app.querySelectorAll("[data-rel]").forEach(b=>b.onclick=()=>releaseHold(user,b.dataset.rel,()=>viewHolds(user)));
+}
+
+function render(){
+  const user=getUser();
+  const parts=(location.hash||"#/animals").slice(2).split("/");
+  if(!user){ viewLogin(); return; }
+  window.scrollTo(0,0);
+  switch(parts[0]){
+    case "animal": return viewAnimal(user,parts[1]);
+    case "new": return viewForm(user,null);
+    case "edit": return viewForm(user,parts[1]);
+    case "hold": return viewHold(user,parts[1]);
+    case "holds": return viewHolds(user);
+    default: return viewAnimals(user);
+  }
+}
+load(); save();
+window.addEventListener("hashchange",render);
+render();
+})();
+</script>
+</body>
+</html>
