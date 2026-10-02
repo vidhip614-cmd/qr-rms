@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR-RMS</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 0; background: #fff; color: #000; }
+#top { background: #333; color: #fff; padding: 10px 20px; }
+#top b { font-size: 18px; }
+#top span { float: right; font-size: 14px; }
+#top a { color: #fff; }
+#menu { background: #eee; padding: 8px 20px; border-bottom: 1px solid #999; }
+#menu a { margin-right: 20px; }
+#page { padding: 20px; max-width: 800px; }
+h2 { margin-top: 0; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #999; padding: 6px 8px; text-align: left; }
+th { background: #eee; }
+label { display: block; margin-top: 10px; font-weight: bold; }
+input, select, textarea { padding: 5px; width: 300px; max-width: 100%; font-size: 14px; }
+button { padding: 6px 14px; font-size: 14px; margin-top: 12px; margin-right: 6px; }
+.error { color: #b00000; border: 1px solid #b00000; padding: 8px; margin-bottom: 12px; }
+.ok { color: #006400; border: 1px solid #006400; padding: 8px; margin-bottom: 12px; }
+.small { font-size: 12px; color: #555; margin-top: 30px; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// ---------- users ----------
+var USERS = {
+  coordinator: { password: "coord2026", name: "Coordinator", role: "Coordinator" },
+  kim:         { password: "adopt2026", name: "Kim", role: "Adoption Coordinator" },
+  volunteer:   { password: "vol2026", name: "Volunteer", role: "Volunteer" }
+};
+var HOLD_HOURS = 48;
+var HOUR = 3600000;
+
+// ---------- data ----------
+var db;
+var currentUser = null;
+var message = "";
+
+function startData() {
+  var now = Date.now();
+  db = {
+    nextId: 1010,
+    nextHold: 503,
+    animals: [
+      { id: "QR-1001", name: "Biscuit", species: "Dog", breed: "Beagle mix", sex: "Male", age: "2 years", color: "Tan and white", intakeDate: "2026-08-02", intakeSource: "Owner surrender", location: "Foster: Patel home", status: "Available" },
+      { id: "QR-1002", name: "Juniper", species: "Cat", breed: "Domestic shorthair", sex: "Female", age: "8 months", color: "Grey tabby", intakeDate: "2026-08-11", intakeSource: "Stray", location: "Storefront", status: "On Hold" },
+      { id: "QR-1003", name: "Moose", species: "Dog", breed: "Lab mix", sex: "Male", age: "4 years", color: "Black", intakeDate: "2026-07-20", intakeSource: "Transfer", location: "Foster: Nguyen home", status: "Pending" },
+      { id: "QR-1004", name: "Pepper", species: "Cat", breed: "Domestic longhair", sex: "Female", age: "3 years", color: "Black and white", intakeDate: "2026-06-30", intakeSource: "Owner surrender", location: "Adopted", status: "Adopted" },
+      { id: "QR-1005", name: "Tater", species: "Dog", breed: "Chihuahua", sex: "Male", age: "6 years", color: "Fawn", intakeDate: "2026-08-19", intakeSource: "Stray", location: "Foster: Brooks home", status: "Available" },
+      { id: "QR-1006", name: "Clementine", species: "Cat", breed: "Orange tabby", sex: "Female", age: "1 year", color: "Orange", intakeDate: "2026-09-01", intakeSource: "Transfer", location: "Storefront", status: "Available" },
+      { id: "QR-1007", name: "Marmalade", species: "Cat", breed: "Orange tabby", sex: "Male", age: "1 year", color: "Orange", intakeDate: "2026-09-01", intakeSource: "Transfer", location: "Storefront", status: "Available" },
+      { id: "QR-1008", name: "Rosie", species: "Dog", breed: "Pit bull mix", sex: "Female", age: "3 years", color: "Brindle", intakeDate: "2026-08-27", intakeSource: "Transfer", location: "Foster: Alvarez home", status: "On Hold" },
+      { id: "QR-1009", name: "Pickles", species: "Rabbit", breed: "Holland Lop", sex: "Male", age: "2 years", color: "Brown", intakeDate: "2026-09-09", intakeSource: "Owner surrender", location: "Foster: Kim home", status: "Available" }
+    ],
+    holds: [
+      { holdId: "H-501", animalId: "QR-1002", adopter: "Dana Whitfield", phone: "765-555-0142", email: "dana.w@example.com", visit: "Saturday adoption event", placedBy: "Volunteer", expires: now + 18 * HOUR, active: true },
+      { holdId: "H-502", animalId: "QR-1008", adopter: "Marcus Lee", phone: "765-555-0199", email: "mlee@example.com", visit: "Meet at foster home", placedBy: "Kim", expires: now + 30 * HOUR, active: true }
+    ]
+  };
+}
+
+function loadData() {
+  try {
+    var saved = localStorage.getItem("qrrms-simple");
+    if (saved) { db = JSON.parse(saved); return; }
+  } catch (e) {}
+  startData();
+}
+
+function saveData() {
+  try { localStorage.setItem("qrrms-simple", JSON.stringify(db)); } catch (e) {}
+}
+
+function findAnimal(id) {
+  for (var i = 0; i < db.animals.length; i++) {
+    if (db.animals[i].id == id) return db.animals[i];
+  }
+  return null;
+}
+
+function findHold(animalId) {
+  for (var i = 0; i < db.holds.length; i++) {
+    if (db.holds[i].active && db.holds[i].animalId == animalId) return db.holds[i];
+  }
+  return null;
+}
+
+function clean(text) {
+  return String(text == null ? "" : text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function val(id) {
+  return document.getElementById(id).value.trim();
+}
+
+function hoursLeft(hold) {
+  var h = Math.round((hold.expires - Date.now()) / HOUR);
+  if (h <= 0) return "Expired";
+  return h + " hours";
+}
+
+function showDate(ms) {
+  return new Date(ms).toLocaleString();
+}
+
+// ---------- page layout ----------
+function layout(body) {
+  var menu = '<a href="#animals">Animals</a>';
+  if (currentUser.role == "Coordinator") menu += '<a href="#add">Add animal</a>';
+  if (currentUser.role != "Volunteer") menu += '<a href="#holds">Active holds</a>';
+
+  var msg = "";
+  if (message != "") { msg = '<div class="ok" id="msg">' + clean(message) + '</div>'; message = ""; }
+
+  document.getElementById("app").innerHTML =
+    '<div id="top"><b>QR-RMS</b> Quarry Road Rescue Management System' +
+    '<span>Logged in as ' + clean(currentUser.name) + ' (' + currentUser.role + ') | <a href="#" id="logout">Log out</a></span></div>' +
+    '<div id="menu">' + menu + '</div>' +
+    '<div id="page">' + msg + body +
+    '<p class="small">Sprint 1 prototype. <a href="#" id="reset">Reset demo data</a></p></div>';
+
+  document.getElementById("logout").onclick = function () {
+    currentUser = null;
+    try { sessionStorage.removeItem("qrrms-user"); } catch (e) {}
+    location.hash = "";
+    loginPage();
+    return false;
+  };
+  document.getElementById("reset").onclick = function () {
+    startData();
+    saveData();
+    message = "Demo data reset.";
+    show();
+    return false;
+  };
+}
+
+// ---------- login ----------
+function loginPage(error) {
+  document.getElementById("app").innerHTML =
+    '<div id="top"><b>QR-RMS</b> Quarry Road Rescue Management System</div>' +
+    '<div id="page"><h2>Login</h2>' +
+    (error ? '<div class="error">' + error + '</div>' : '') +
+    '<form id="lf">' +
+    '<label for="u">Username</label><input id="u">' +
+    '<label for="p">Password</label><input id="p" type="password">' +
+    '<br><button type="submit">Sign in</button></form></div>';
+
+  document.getElementById("lf").onsubmit = function () {
+    var u = val("u").toLowerCase();
+    var p = document.getElementById("p").value;
+    if (USERS[u] && USERS[u].password == p) {
+      currentUser = USERS[u];
+      try { sessionStorage.setItem("qrrms-user", u); } catch (e) {}
+      location.hash = "animals";
+      show();
+    } else {
+      loginPage("Wrong username or password.");
+    }
+    return false;
+  };
+}
+
+// ---------- animals list and search ----------
+var searchText = "";
+
+function animalsPage() {
+  layout(
+    '<h2>Animals</h2>' +
+    '<label for="q">Search by animal ID or name</label>' +
+    '<input id="q" value="' + clean(searchText) + '"> <button id="searchBtn">Search</button> <button id="clearBtn">Show all</button>' +
+    '<br><br><div id="results"></div>'
+  );
+
+  function draw() {
+    var term = searchText.toLowerCase();
+    var rows = "";
+    for (var i = 0; i < db.animals.length; i++) {
+      var a = db.animals[i];
+      if (term == "" || a.id.toLowerCase().indexOf(term) >= 0 || a.name.toLowerCase().indexOf(term) >= 0) {
+        rows += '<tr><td><a href="#animal/' + a.id + '">' + a.id + '</a></td><td>' + clean(a.name) + '</td><td>' + clean(a.species) + '</td><td>' + clean(a.location) + '</td><td>' + a.status + '</td></tr>';
+      }
+    }
+    if (rows == "") {
+      document.getElementById("results").innerHTML = '<div class="error">No animal found with that ID or name.</div>';
+    } else {
+      document.getElementById("results").innerHTML = '<table><tr><th>ID</th><th>Name</th><th>Species</th><th>Location</th><th>Status</th></tr>' + rows + '</table>';
+    }
+  }
+
+  document.getElementById("searchBtn").onclick = function () { searchText = val("q"); draw(); };
+  document.getElementById("clearBtn").onclick = function () { searchText = ""; document.getElementById("q").value = ""; draw(); };
+  document.getElementById("q").onkeyup = function (e) { if (e.key == "Enter") { searchText = val("q"); draw(); } };
+  draw();
+}
+
+// ---------- animal record ----------
+function animalPage(id, error) {
+  var a = findAnimal(id);
+  if (!a) { layout('<div class="error">Animal not found.</div>'); return; }
+  var hold = findHold(a.id);
+
+  var body = '<p><a href="#animals">Back to animals</a></p><h2>' + clean(a.name) + ' (' + a.id + ')</h2>';
+  if (error) body += '<div class="error" id="err">' + error + '</div>';
+  body += '<table>' +
+    '<tr><th>Status</th><td>' + a.status + '</td></tr>' +
+    '<tr><th>Species</th><td>' + clean(a.species) + '</td></tr>' +
+    '<tr><th>Breed</th><td>' + clean(a.breed) + '</td></tr>' +
+    '<tr><th>Sex</th><td>' + clean(a.sex) + '</td></tr>' +
+    '<tr><th>Age</th><td>' + clean(a.age) + '</td></tr>' +
+    '<tr><th>Color</th><td>' + clean(a.color) + '</td></tr>' +
+    '<tr><th>Intake date</th><td>' + clean(a.intakeDate) + '</td></tr>' +
+    '<tr><th>Intake source</th><td>' + clean(a.intakeSource) + '</td></tr>' +
+    '<tr><th>Location</th><td>' + clean(a.location) + '</td></tr>';
+  if (hold) {
+    body += '<tr><th>Adoption hold</th><td>' + hold.holdId + ' for ' + clean(hold.adopter) + ', expires ' + showDate(hold.expires) + '</td></tr>';
+  }
+  body += '</table>';
+  if (currentUser.role == "Coordinator") body += '<button id="editBtn">Edit record</button>';
+  body += '<button id="holdBtn">Place adoption hold</button>';
+
+  layout(body);
+
+  if (document.getElementById("editBtn")) {
+    document.getElementById("editBtn").onclick = function () { location.hash = "edit/" + a.id; };
+  }
+  document.getElementById("holdBtn").onclick = function () {
+    if (a.status != "Available") {
+      animalPage(id, clean(a.name) + " cannot be placed on hold because the status is " + a.status + ".");
+    } else {
+      location.hash = "hold/" + a.id;
+    }
+  };
+}
+
+// ---------- add / edit animal ----------
+var duplicateWarned = false;
+
+function animalForm(id) {
+  if (currentUser.role != "Coordinator") { layout('<div class="error">Only coordinators can add or edit animal records.</div>'); return; }
+  var editing = id ? findAnimal(id) : null;
+  var a = editing || { id: "QR-" + db.nextId, name: "", species: "", breed: "", sex: "", age: "", color: "", intakeDate: "", intakeSource: "", location: "", status: "Available" };
+
+  function options(list, selected) {
+    var out = '<option value="">Select</option>';
+    for (var i = 0; i < list.length; i++) out += '<option' + (list[i] == selected ? ' selected' : '') + '>' + list[i] + '</option>';
+    return out;
+  }
+
+  var statusField;
+  if (a.status == "On Hold") {
+    statusField = '<input id="f-status" value="On Hold" readonly>';
+  } else {
+    statusField = '<select id="f-status">' + options(["Available", "Pending", "Adopted"], a.status) + '</select>';
+  }
+
+  layout(
+    '<p><a href="#animals">Back to animals</a></p>' +
+    '<h2>' + (editing ? 'Edit animal record' : 'Add animal') + '</h2>' +
+    '<div id="formError"></div>' +
+    '<form id="af">' +
+    '<label>Animal ID</label><input id="f-id" value="' + a.id + '" readonly>' +
+    '<label>Name *</label><input id="f-name" value="' + clean(a.name) + '">' +
+    '<label>Species *</label><select id="f-species">' + options(["Dog", "Cat", "Rabbit", "Other"], a.species) + '</select>' +
+    '<label>Breed</label><input id="f-breed" value="' + clean(a.breed) + '">' +
+    '<label>Sex *</label><select id="f-sex">' + options(["Male", "Female", "Unknown"], a.sex) + '</select>' +
+    '<label>Age</label><input id="f-age" value="' + clean(a.age) + '">' +
+    '<label>Color</label><input id="f-color" value="' + clean(a.color) + '">' +
+    '<label>Intake date *</label><input id="f-intake" type="date" value="' + clean(a.intakeDate) + '">' +
+    '<label>Intake source *</label><input id="f-src" value="' + clean(a.intakeSource) + '">' +
+    '<label>Location *</label><input id="f-loc" value="' + clean(a.location) + '">' +
+    '<label>Status</label>' + statusField +
+    '<br><button type="submit">' + (editing ? 'Save changes' : 'Save animal record') + '</button>' +
+    '</form>'
+  );
+
+  document.getElementById("af").onsubmit = function () {
+    var data = {
+      name: val("f-name"), species: val("f-species"), breed: val("f-breed"), sex: val("f-sex"),
+      age: val("f-age"), color: val("f-color"), intakeDate: val("f-intake"),
+      intakeSource: val("f-src"), location: val("f-loc"), status: val("f-status")
+    };
+    var box = document.getElementById("formError");
+
+    // check required fields
+    if (data.name == "" || data.species == "" || data.sex == "" || data.intakeDate == "" || data.intakeSource == "" || data.location == "") {
+      box.innerHTML = '<div class="error">Please fill in all required fields (*).</div>';
+      window.scrollTo(0, 0);
+      return false;
+    }
+
+    // check for duplicate record
+    if (!editing && !duplicateWarned) {
+      for (var i = 0; i < db.animals.length; i++) {
+        var x = db.animals[i];
+        if (x.name.toLowerCase() == data.name.toLowerCase() && x.species == data.species && x.intakeDate == data.intakeDate) {
+          duplicateWarned = true;
+          box.innerHTML = '<div class="error">This animal may already have a record: <a href="#animal/' + x.id + '">' + x.id + '</a>. Click Save again to add it anyway.</div>';
+          window.scrollTo(0, 0);
+          return false;
+        }
+      }
+    }
+
+    if (editing) {
+      for (var key in data) editing[key] = data[key];
+      message = "Record updated.";
+      saveData();
+      location.hash = "animal/" + editing.id;
+    } else {
+      data.id = "QR-" + db.nextId;
+      db.nextId++;
+      db.animals.push(data);
+      message = "Animal record saved. ID: " + data.id;
+      saveData();
+      location.hash = "animal/" + data.id;
+    }
+    return false;
+  };
+}
+
+// ---------- place hold ----------
+function holdForm(id) {
+  var a = findAnimal(id);
+  if (!a) { location.hash = "animals"; return; }
+  if (a.status != "Available") { animalPage(id, clean(a.name) + " cannot be placed on hold because the status is " + a.status + "."); return; }
+
+  layout(
+    '<p><a href="#animal/' + a.id + '">Back to record</a></p>' +
+    '<h2>Adoption hold for ' + clean(a.name) + ' (' + a.id + ')</h2>' +
+    '<p>A hold lasts ' + HOLD_HOURS + ' hours.</p>' +
+    '<div id="formError"></div>' +
+    '<form id="hf">' +
+    '<label>Adopter name *</label><input id="h-name">' +
+    '<label>Phone *</label><input id="h-phone">' +
+    '<label>Email</label><input id="h-email">' +
+    '<label>Visit</label><select id="h-visit"><option>Saturday adoption event</option><option>Meet at storefront</option><option>Meet at foster home</option></select>' +
+    '<br><button type="submit">Place hold</button>' +
+    '</form>'
+  );
+
+  document.getElementById("hf").onsubmit = function () {
+    if (val("h-name") == "" || val("h-phone") == "") {
+      document.getElementById("formError").innerHTML = '<div class="error">Adopter name and phone are required.</div>';
+      return false;
+    }
+    var hold = {
+      holdId: "H-" + db.nextHold, animalId: a.id, adopter: val("h-name"), phone: val("h-phone"),
+      email: val("h-email"), visit: val("h-visit"), placedBy: currentUser.name,
+      expires: Date.now() + HOLD_HOURS * HOUR, active: true
+    };
+    db.nextHold++;
+    db.holds.push(hold);
+    a.status = "On Hold";
+    saveData();
+    message = "Hold " + hold.holdId + " placed. " + a.name + " is now On Hold.";
+    location.hash = "animal/" + a.id;
+    return false;
+  };
+}
+
+// ---------- active holds ----------
+function holdsPage() {
+  if (currentUser.role == "Volunteer") { layout('<div class="error">Only coordinators can view active holds.</div>'); return; }
+
+  var rows = "";
+  for (var i = 0; i < db.holds.length; i++) {
+    var h = db.holds[i];
+    if (!h.active) continue;
+    var a = findAnimal(h.animalId);
+    rows += '<tr><td>' + h.holdId + '</td><td><a href="#animal/' + h.animalId + '">' + clean(a ? a.name : "") + ' (' + h.animalId + ')</a></td><td>' + clean(h.adopter) + '</td><td>' + clean(h.phone) + '</td><td>' + clean(h.visit) + '</td><td>' + clean(h.placedBy) + '</td><td>' + hoursLeft(h) + '</td><td><button data-rel="' + h.holdId + '" style="margin:0">Release</button></td></tr>';
+  }
+
+  var body = '<h2>Active holds</h2>';
+  if (rows == "") {
+    body += '<p>There are no active holds.</p>';
+  } else {
+    body += '<table><tr><th>Hold</th><th>Animal</th><th>Adopter</th><th>Phone</th><th>Visit</th><th>Placed by</th><th>Time left</th><th></th></tr>' + rows + '</table>';
+  }
+  layout(body);
+
+  var buttons = document.querySelectorAll("[data-rel]");
+  for (var b = 0; b < buttons.length; b++) {
+    buttons[b].onclick = function () { releaseHold(this.getAttribute("data-rel")); };
+  }
+}
+
+function releaseHold(holdId) {
+  for (var i = 0; i < db.holds.length; i++) {
+    var h = db.holds[i];
+    if (h.holdId == holdId) {
+      if (!confirm("Release hold " + h.holdId + " for " + h.adopter + "?")) return;
+      h.active = false;
+      var a = findAnimal(h.animalId);
+      if (a) a.status = "Available";
+      saveData();
+      message = "Hold " + h.holdId + " released. " + (a ? a.name : "The animal") + " is now Available.";
+      holdsPage();
+      return;
+    }
+  }
+}
+
+// ---------- router ----------
+function show() {
+  if (!currentUser) { loginPage(); return; }
+  var parts = location.hash.replace("#", "").split("/");
+  window.scrollTo(0, 0);
+  if (parts[0] == "animal") animalPage(parts[1]);
+  else if (parts[0] == "add") { duplicateWarned = false; animalForm(null); }
+  else if (parts[0] == "edit") animalForm(parts[1]);
+  else if (parts[0] == "hold") holdForm(parts[1]);
+  else if (parts[0] == "holds") holdsPage();
+  else animalsPage();
+}
+
+loadData();
+try {
+  var savedUser = sessionStorage.getItem("qrrms-user");
+  if (savedUser && USERS[savedUser]) currentUser = USERS[savedUser];
+} catch (e) {}
+window.onhashchange = function () { if (currentUser) show(); };
+show();
+</script>
+</body>
+</html>
