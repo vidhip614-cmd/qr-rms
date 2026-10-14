@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR-RMS</title>
+<style>
+/* QR-RMS styles - Team 2 */
+* { box-sizing: border-box; }
+body {
+  font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+  margin: 0;
+  background: #f4f6f5;
+  color: #222;
+  font-size: 15px;
+}
+a { color: #2b6f5e; }
+
+#top {
+  background: #2b6f5e;
+  color: white;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+#top b { font-size: 20px; letter-spacing: 1px; margin-right: 8px; }
+#top .sub { font-size: 13px; opacity: .85; }
+#top span { font-size: 13px; }
+#top a { color: white; }
+
+#menu {
+  background: white;
+  border-bottom: 1px solid #d5dbd8;
+  padding: 0 24px;
+}
+#menu a {
+  display: inline-block;
+  padding: 12px 14px;
+  text-decoration: none;
+  color: #444;
+  border-bottom: 3px solid transparent;
+}
+#menu a:hover { color: #2b6f5e; }
+#menu a.on { color: #2b6f5e; border-bottom-color: #2b6f5e; font-weight: bold; }
+
+#page { padding: 24px; max-width: 960px; margin: 0 auto; }
+.box {
+  background: white;
+  border: 1px solid #dde3e0;
+  border-radius: 6px;
+  padding: 20px 22px;
+  margin-bottom: 18px;
+}
+h2 { margin: 0 0 14px 0; color: #1f4f43; }
+h3 { margin: 22px 0 10px 0; color: #1f4f43; font-size: 17px; }
+
+table { border-collapse: collapse; width: 100%; background: white; }
+th, td { border-bottom: 1px solid #e3e7e5; padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #eef3f1; font-size: 13px; text-transform: uppercase; color: #555; }
+tr:nth-child(even) td { background: #fafbfa; }
+table.info th { text-transform: none; font-size: 14px; width: 210px; background: #f5f8f7; }
+
+label { display: block; margin-top: 12px; margin-bottom: 4px; font-weight: bold; font-size: 14px; }
+input, select, textarea {
+  padding: 7px 9px;
+  width: 320px;
+  max-width: 100%;
+  font-size: 14px;
+  border: 1px solid #b9c3bf;
+  border-radius: 4px;
+}
+input:focus, select:focus { outline: 2px solid #9cc9bc; border-color: #2b6f5e; }
+input[readonly] { background: #f0f0f0; color: #666; }
+
+button {
+  padding: 8px 16px;
+  font-size: 14px;
+  margin-top: 14px;
+  margin-right: 6px;
+  border: 1px solid #2b6f5e;
+  background: #2b6f5e;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:hover { background: #22594b; }
+button.light { background: white; color: #2b6f5e; }
+button.light:hover { background: #eef3f1; }
+td button { margin: 0; padding: 4px 10px; font-size: 13px; }
+
+.error { color: #9b1c1c; background: #fdecec; border: 1px solid #f0b4b4; border-radius: 4px; padding: 10px 12px; margin-bottom: 14px; }
+.ok { color: #185c2e; background: #e8f6ec; border: 1px solid #a9dbb7; border-radius: 4px; padding: 10px 12px; margin-bottom: 14px; }
+.note { background: #fff8db; border: 1px solid #e8d27a; border-radius: 4px; padding: 10px 12px; margin-bottom: 14px; }
+.small { font-size: 12px; color: #777; margin-top: 30px; text-align: center; }
+
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+.s-Available { background: #c8f0c8; color: #0a4d0a; }
+.s-Pending { background: #fde7a6; color: #6b4a00; }
+.s-OnHold { background: #c9ddf7; color: #0b3a75; }
+.s-Adopted { background: #ddd; color: #333; }
+.late { color: #b00000; font-weight: bold; }
+
+#login { max-width: 380px; margin: 60px auto; }
+#login input { width: 100%; }
+#login button { width: 100%; }
+#login p { color: #666; font-size: 13px; margin-top: 0; }
+
+@media (max-width: 600px) {
+  #page { padding: 12px; }
+  .box { padding: 14px; }
+  #menu a { padding: 10px 8px; }
+  th, td { padding: 6px; font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// QR-RMS prototype - CNIT 280 Team 2
+// everything is saved in localStorage for now, no real backend yet
+
+// ---------- users ----------
+var USERS = {
+  coordinator: { password: "coord2026", name: "Coordinator", role: "Coordinator" },
+  kim:         { password: "adopt2026", name: "Kim Osei", role: "Adoption Coordinator" },
+  volunteer:   { password: "vol2026", name: "Volunteer", role: "Volunteer" },
+  owen:        { password: "owen2026", name: "Owen Brzezinski", role: "Foster Coordinator" },
+  patel:       { password: "foster2026", name: "Patel home", role: "Foster" },
+  nguyen:      { password: "foster2026", name: "Nguyen home", role: "Foster" }
+};
+var currentUserId = null;
+var currentUser = null;
+
+var STATUSES = ["Available", "Pending", "On Hold", "Adopted"];
+var PLACES = ["Foster home", "Storefront", "Partner vet clinic"];
+var HOLD_HOURS = 48;
+var CONFIRM_HOURS = 24;
+var HOUR = 3600000;
+
+// foster homes in the system (only patel + nguyen have logins for the demo)
+var FOSTERS = {
+  patel: "Patel home", nguyen: "Nguyen home", brooks: "Brooks home", alvarez: "Alvarez home", okafor: "Okafor home"
+};
+
+// ---------- data ----------
+var db;
+var message = "";
+
+function today() { return new Date().toISOString().slice(0, 10); }
+function daysAgo(n) { return new Date(Date.now() - n * 86400000).toISOString().slice(0, 10); }
+
+function startData() {
+  var now = Date.now();
+  function a(id, name, species, breed, sex, age, color, intake, src, place, foster, status, fixed, rabies) {
+    return { id: id, name: name, species: species, breed: breed, sex: sex, age: age, color: color, intakeDate: intake, intakeSource: src,
+      place: place, foster: foster, status: status, spayedNeutered: fixed, rabiesCurrent: rabies,
+      statusBy: "Coordinator", statusDate: intake,
+      history: [{ date: intake, place: place, foster: foster, by: "Coordinator", note: "Intake" }] };
+  }
+  db = {
+    nextId: 1010,
+    nextHold: 503,
+    nextHandoff: 3,
+    animals: [
+      a("QR-1001", "Biscuit", "Dog", "Beagle mix", "Male", "2 years", "Tan and white", "2026-08-02", "Owner surrender", "Foster home", "patel", "Available", "Yes", "Yes"),
+      a("QR-1002", "Juniper", "Cat", "Domestic shorthair", "Female", "8 months", "Grey tabby", "2026-08-11", "County animal control", "Storefront", "", "On Hold", "Yes", "Yes"),
+      a("QR-1003", "Moose", "Dog", "Lab mix", "Male", "4 years", "Black", "2026-07-20", "County animal control", "Foster home", "nguyen", "Pending", "Yes", "Yes"),
+      a("QR-1004", "Pepper", "Cat", "Domestic longhair", "Female", "3 years", "Black and white", "2026-06-30", "Owner surrender", "Foster home", "", "Adopted", "Yes", "Yes"),
+      a("QR-1005", "Tater", "Dog", "Chihuahua", "Male", "6 years", "Fawn", "2026-08-19", "County animal control", "Foster home", "brooks", "Available", "Yes", "Yes"),
+      a("QR-1006", "Clementine", "Cat", "Orange tabby", "Female", "1 year", "Orange", "2026-09-01", "County animal control", "Foster home", "patel", "Pending", "No", "Yes"),
+      a("QR-1007", "Marmalade", "Cat", "Orange tabby", "Male", "1 year", "Orange", "2026-09-01", "County animal control", "Partner vet clinic", "nguyen", "Pending", "No", "No"),
+      a("QR-1008", "Rosie", "Dog", "Pit bull mix", "Female", "3 years", "Brindle", "2026-08-27", "County animal control", "Foster home", "alvarez", "On Hold", "Yes", "Yes"),
+      a("QR-1009", "Pickles", "Rabbit", "Holland Lop", "Male", "2 years", "Brown", "2026-09-09", "Owner surrender", "Foster home", "okafor", "Available", "Yes", "No")
+    ],
+    holds: [
+      { holdId: "H-501", animalId: "QR-1002", adopter: "Dana Whitfield", phone: "765-555-0142", email: "dana.w@example.com", visit: "Saturday adoption event", placedBy: "Volunteer", expires: now + 18 * HOUR, active: true },
+      { holdId: "H-502", animalId: "QR-1008", adopter: "Marcus Lee", phone: "765-555-0199", email: "mlee@example.com", visit: "Meet at foster home", placedBy: "Kim Osei", expires: now + 30 * HOUR, active: true }
+    ],
+    handoffs: [
+      { id: "T-1", animalId: "QR-1005", from: "brooks", to: "nguyen", date: daysAgo(2), created: now - 30 * HOUR, done: false },
+      { id: "T-2", animalId: "QR-1001", from: "patel", to: "nguyen", date: today(), created: now - 2 * HOUR, done: false }
+    ],
+    updates: [
+      { time: now - 30 * HOUR, text: "Brooks home started a handoff of Tater (QR-1005) to Nguyen home." },
+      { time: now - 6 * HOUR, text: "Nguyen home moved Marmalade (QR-1007) to Partner vet clinic." },
+      { time: now - 2 * HOUR, text: "Patel home started a handoff of Biscuit (QR-1001) to Nguyen home." }
+    ]
+  };
+  db.animals[3].place = "Adopted";
+  db.animals[3].history = [{ date: "2026-06-30", place: "Foster home", foster: "okafor", by: "Coordinator", note: "Intake" }, { date: "2026-09-20", place: "Adopted", foster: "", by: "Coordinator", note: "Went home with adopter" }];
+  db.animals[6].history.push({ date: daysAgo(0), place: "Partner vet clinic", foster: "nguyen", by: "Nguyen home", note: "Spay appointment" });
+}
+
+function loadData() {
+  try {
+    var saved = localStorage.getItem("qrrms-sprint2");
+    if (saved) { db = JSON.parse(saved); return; }
+  } catch (e) {}
+  startData();
+}
+
+function saveData() {
+  try { localStorage.setItem("qrrms-sprint2", JSON.stringify(db)); } catch (e) {}
+}
+
+function findAnimal(id) {
+  for (var i = 0; i < db.animals.length; i++) if (db.animals[i].id == id) return db.animals[i];
+  return null;
+}
+
+function findHold(animalId) {
+  for (var i = 0; i < db.holds.length; i++) if (db.holds[i].active && db.holds[i].animalId == animalId) return db.holds[i];
+  return null;
+}
+
+function openHandoff(animalId) {
+  for (var i = 0; i < db.handoffs.length; i++) if (!db.handoffs[i].done && db.handoffs[i].animalId == animalId) return db.handoffs[i];
+  return null;
+}
+
+function fosterName(key) { return key ? (FOSTERS[key] || key) : "None"; }
+
+function whereIs(a) {
+  if (a.place == "Foster home") return fosterName(a.foster);
+  return a.place;
+}
+
+function clean(text) {
+  return String(text == null ? "" : text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function val(id) { return document.getElementById(id).value.trim(); }
+
+function badge(status) { return '<span class="badge s-' + status.replace(" ", "") + '">' + status + '</span>'; }
+
+function hoursLeft(hold) {
+  var h = Math.round((hold.expires - Date.now()) / HOUR);
+  if (h <= 0) return "Expired";
+  return h + " hours";
+}
+
+function isLate(t) { return Date.now() - t.created > CONFIRM_HOURS * HOUR; }
+
+function showDate(ms) { return new Date(ms).toLocaleString(); }
+
+function addUpdate(text) { db.updates.push({ time: Date.now(), text: text }); }
+
+function can(what) {
+  var r = currentUser.role;
+  if (what == "edit") return r == "Coordinator";
+  if (what == "status") return r == "Coordinator";
+  if (what == "hold") return r == "Coordinator" || r == "Adoption Coordinator" || r == "Volunteer";
+  if (what == "holds") return r == "Coordinator" || r == "Adoption Coordinator";
+  if (what == "locations") return r == "Coordinator" || r == "Foster Coordinator";
+  return false;
+}
+
+// ---------- page layout ----------
+function layout(body) {
+  var menu = "";
+  if (currentUser.role == "Foster") menu += '<a href="#mine">My animals</a>';
+  menu += '<a href="#animals">Animals</a>';
+  if (can("edit")) menu += '<a href="#add">Add animal</a>';
+  if (can("holds")) menu += '<a href="#holds">Active holds</a>';
+  if (can("locations")) menu += '<a href="#locations">Foster updates</a>';
+
+  var msg = "";
+  if (message != "") { msg = '<div class="ok" id="msg">' + clean(message) + '</div>'; message = ""; }
+
+  document.getElementById("app").innerHTML =
+    '<div id="top"><div><b>QR-RMS</b> <span class="sub">Quarry Road Rescue Management System</span></div>' +
+    '<span>' + clean(currentUser.name) + ' (' + currentUser.role + ') &nbsp;|&nbsp; <a href="#" id="logout">Log out</a></span></div>' +
+    '<div id="menu">' + menu + '</div>' +
+    '<div id="page">' + msg + '<div class="box">' + body + '</div>' +
+    '<p class="small">CNIT 280 Team 2 - Sprint 2 prototype. Data only saves in this browser. <a href="#" id="reset">Reset demo data</a></p></div>';
+
+  // underline the tab we're on
+  var tab = location.hash.replace("#", "").split("/")[0] || "animals";
+  if (tab == "animal" || tab == "edit" || tab == "status" || tab == "hold") tab = "animals";
+  if (tab == "move") tab = "mine";
+  var links = document.querySelectorAll("#menu a");
+  for (var i = 0; i < links.length; i++) {
+    if (links[i].getAttribute("href") == "#" + tab) links[i].className = "on";
+  }
+
+  document.getElementById("logout").onclick = function () {
+    currentUser = null; currentUserId = null;
+    try { sessionStorage.removeItem("qrrms-user"); } catch (e) {}
+    location.hash = "";
+    loginPage();
+    return false;
+  };
+  document.getElementById("reset").onclick = function () {
+    startData(); saveData();
+    message = "Demo data reset.";
+    show();
+    return false;
+  };
+}
+
+// ---------- login ----------
+function loginPage(error) {
+  document.getElementById("app").innerHTML =
+    '<div id="top"><div><b>QR-RMS</b> <span class="sub">Quarry Road Rescue Management System</span></div></div>' +
+    '<div id="page"><div class="box" id="login"><h2>Sign in</h2><p>Use the login for your role.</p>' +
+    (error ? '<div class="error">' + error + '</div>' : '') +
+    '<form id="lf">' +
+    '<label for="u">Username</label><input id="u" autocomplete="username">' +
+    '<label for="p">Password</label><input id="p" type="password" autocomplete="current-password">' +
+    '<button type="submit">Sign in</button></form></div></div>';
+
+  document.getElementById("lf").onsubmit = function () {
+    var u = val("u").toLowerCase();
+    var p = document.getElementById("p").value;
+    if (USERS[u] && USERS[u].password == p) {
+      currentUserId = u; currentUser = USERS[u];
+      try { sessionStorage.setItem("qrrms-user", u); } catch (e) {}
+      location.hash = currentUser.role == "Foster" ? "mine" : "animals";
+      show();
+    } else {
+      loginPage("Wrong username or password.");
+    }
+    return false;
+  };
+}
+
+// ---------- animals list and search ----------
+var searchText = "";
+var statusFilter = "";
+
+function animalsPage() {
+  var opts = '<option value="">All statuses</option>';
+  for (var i = 0; i < STATUSES.length; i++) opts += '<option' + (STATUSES[i] == statusFilter ? ' selected' : '') + '>' + STATUSES[i] + '</option>';
+  layout(
+    '<h2>Animals</h2>' +
+    '<label for="q">Search by animal ID or name</label>' +
+    '<input id="q" value="' + clean(searchText) + '"> <button id="searchBtn">Search</button> <button class="light" id="clearBtn">Show all</button>' +
+    '<label for="sf">Status</label><select id="sf">' + opts + '</select>' +
+    '<p>Status key: ' + badge("Available") + ' ' + badge("Pending") + ' ' + badge("On Hold") + ' ' + badge("Adopted") + '</p>' +
+    '<div id="results"></div>'
+  );
+
+  function draw() {
+    var term = searchText.toLowerCase();
+    var rows = "";
+    for (var i = 0; i < db.animals.length; i++) {
+      var a = db.animals[i];
+      if (statusFilter != "" && a.status != statusFilter) continue;
+      if (term == "" || a.id.toLowerCase().indexOf(term) >= 0 || a.name.toLowerCase().indexOf(term) >= 0) {
+        rows += '<tr><td><a href="#animal/' + a.id + '">' + a.id + '</a></td><td>' + clean(a.name) + '</td><td>' + clean(a.species) + '</td><td>' + clean(whereIs(a)) + '</td><td>' + badge(a.status) + '</td></tr>';
+      }
+    }
+    if (rows == "") {
+      document.getElementById("results").innerHTML = '<div class="error">No animal found.</div>';
+    } else {
+      document.getElementById("results").innerHTML = '<table><tr><th>ID</th><th>Name</th><th>Species</th><th>Location</th><th>Status</th></tr>' + rows + '</table>';
+    }
+  }
+
+  document.getElementById("searchBtn").onclick = function () { searchText = val("q"); draw(); };
+  document.getElementById("clearBtn").onclick = function () { searchText = ""; statusFilter = ""; document.getElementById("q").value = ""; document.getElementById("sf").value = ""; draw(); };
+  document.getElementById("q").onkeyup = function (e) { if (e.key == "Enter") { searchText = val("q"); draw(); } };
+  document.getElementById("sf").onchange = function () { statusFilter = this.value; draw(); };
+  draw();
+}
+
+// ---------- animal record ----------
+function animalPage(id, error) {
+  var a = findAnimal(id);
+  if (!a) { layout('<div class="error">Animal not found.</div>'); return; }
+  var hold = findHold(a.id);
+  var t = openHandoff(a.id);
+
+  var body = '<p><a href="#animals">Back to animals</a></p><h2>' + clean(a.name) + ' (' + a.id + ')</h2>';
+  if (error) body += '<div class="error" id="err">' + error + '</div>';
+  body += '<table class="info">' +
+    '<tr><th>Status</th><td>' + badge(a.status) + ' <small>set by ' + clean(a.statusBy) + ' on ' + clean(a.statusDate) + '</small></td></tr>' +
+    '<tr><th>Location</th><td>' + clean(a.place == "Foster home" ? "Foster home" : a.place) + '</td></tr>' +
+    '<tr><th>Foster (has the animal)</th><td>' + clean(fosterName(a.foster)) + '</td></tr>' +
+    '<tr><th>Species</th><td>' + clean(a.species) + '</td></tr>' +
+    '<tr><th>Breed</th><td>' + clean(a.breed) + '</td></tr>' +
+    '<tr><th>Sex</th><td>' + clean(a.sex) + '</td></tr>' +
+    '<tr><th>Age</th><td>' + clean(a.age) + '</td></tr>' +
+    '<tr><th>Color</th><td>' + clean(a.color) + '</td></tr>' +
+    '<tr><th>Spayed / neutered</th><td>' + clean(a.spayedNeutered) + '</td></tr>' +
+    '<tr><th>Rabies certificate current</th><td>' + clean(a.rabiesCurrent) + '</td></tr>' +
+    '<tr><th>Intake date</th><td>' + clean(a.intakeDate) + '</td></tr>' +
+    '<tr><th>Intake source</th><td>' + clean(a.intakeSource) + '</td></tr>';
+  if (hold) body += '<tr><th>Adoption hold</th><td>' + hold.holdId + ' for ' + clean(hold.adopter) + ', expires ' + showDate(hold.expires) + '</td></tr>';
+  if (t) body += '<tr><th>Handoff</th><td>Waiting for ' + clean(fosterName(t.to)) + ' to confirm' + (isLate(t) ? ' <span class="late">(over 24 hours, Owen notified)</span>' : '') + '</td></tr>';
+  body += '</table>';
+
+  if (can("status")) body += '<button id="statusBtn">Change status</button>';
+  if (can("edit")) body += '<button class="light" id="editBtn">Edit record</button>';
+  if (can("hold")) body += '<button class="light" id="holdBtn">Place adoption hold</button>';
+  if (currentUser.role == "Foster" && a.foster == currentUserId) body += '<button class="light" id="locBtn">Update location</button>';
+
+  body += '<h3>Location history</h3><table><tr><th>Date</th><th>Location</th><th>Foster</th><th>Updated by</th><th>Note</th></tr>';
+  for (var i = a.history.length - 1; i >= 0; i--) {
+    var h = a.history[i];
+    body += '<tr><td>' + clean(h.date) + '</td><td>' + clean(h.place) + '</td><td>' + clean(fosterName(h.foster)) + '</td><td>' + clean(h.by) + '</td><td>' + clean(h.note) + '</td></tr>';
+  }
+  body += '</table>';
+
+  layout(body);
+
+  if (document.getElementById("statusBtn")) document.getElementById("statusBtn").onclick = function () { location.hash = "status/" + a.id; };
+  if (document.getElementById("editBtn")) document.getElementById("editBtn").onclick = function () { location.hash = "edit/" + a.id; };
+  if (document.getElementById("locBtn")) document.getElementById("locBtn").onclick = function () { location.hash = "move/" + a.id; };
+  if (document.getElementById("holdBtn")) document.getElementById("holdBtn").onclick = function () {
+    if (a.status != "Available") animalPage(id, clean(a.name) + " cannot be placed on hold because the status is " + a.status + ".");
+    else location.hash = "hold/" + a.id;
+  };
+}
+
+// ---------- change status (Req 2) ----------
+function statusForm(id, error) {
+  var a = findAnimal(id);
+  if (!a) { location.hash = "animals"; return; }
+  if (!can("status")) { layout('<div class="error">Only coordinators can change an animal\'s status.</div>'); return; }
+
+  var opts = "";
+  for (var i = 0; i < STATUSES.length; i++) {
+    if (STATUSES[i] == "On Hold") continue;
+    opts += '<option' + (STATUSES[i] == a.status ? ' selected' : '') + '>' + STATUSES[i] + '</option>';
+  }
+  layout(
+    '<p><a href="#animal/' + a.id + '">Back to record</a></p>' +
+    '<h2>Change status for ' + clean(a.name) + ' (' + a.id + ')</h2>' +
+    (error ? '<div class="error" id="err">' + error + '</div>' : '') +
+    '<p>Current status: ' + badge(a.status) + '</p>' +
+    '<p>Pick a status from the list. On Hold is only set by placing an adoption hold.</p>' +
+    '<form id="sf2"><label for="ns">New status</label><select id="ns">' + opts + '</select>' +
+    '<br><button type="submit">Save</button></form>'
+  );
+
+  document.getElementById("sf2").onsubmit = function () {
+    var ns = val("ns");
+    if (findHold(a.id)) {
+      statusForm(id, clean(a.name) + " has an active adoption hold, so the status stays On Hold. Release the hold first.");
+      return false;
+    }
+    if (ns == "Adopted" && (a.spayedNeutered != "Yes" || a.rabiesCurrent != "Yes")) {
+      statusForm(id, clean(a.name) + " cannot be Adopted until the animal is spayed/neutered and has a current rabies certificate.");
+      return false;
+    }
+    if (STATUSES.indexOf(ns) < 0) { statusForm(id, "Pick a status from the list."); return false; }
+    var old = a.status;
+    a.status = ns;
+    a.statusBy = currentUser.name;
+    a.statusDate = today();
+    if (ns == "Adopted") { a.history.push({ date: today(), place: "Adopted", foster: "", by: currentUser.name, note: "Went home with adopter" }); a.place = "Adopted"; a.foster = ""; }
+    saveData();
+    message = a.name + " changed from " + old + " to " + ns + ".";
+    location.hash = "animal/" + a.id;
+    return false;
+  };
+}
+
+// ---------- add / edit animal ----------
+var duplicateWarned = false;
+
+function options(list, selected, blank) {
+  var out = blank ? '<option value="">Select</option>' : '';
+  for (var i = 0; i < list.length; i++) out += '<option' + (list[i] == selected ? ' selected' : '') + '>' + list[i] + '</option>';
+  return out;
+}
+
+function fosterOptions(selected, skip) {
+  var out = '<option value="">Select foster home</option>';
+  for (var k in FOSTERS) if (k != skip) out += '<option value="' + k + '"' + (k == selected ? ' selected' : '') + '>' + FOSTERS[k] + '</option>';
+  return out;
+}
+
+function animalForm(id) {
+  if (!can("edit")) { layout('<div class="error">Only coordinators can add or edit animal records.</div>'); return; }
+  var editing = id ? findAnimal(id) : null;
+  var a = editing || { id: "QR-" + db.nextId, name: "", species: "", breed: "", sex: "", age: "", color: "", intakeDate: "", intakeSource: "", place: "", foster: "", status: "Pending", spayedNeutered: "No", rabiesCurrent: "No" };
+
+  layout(
+    '<p><a href="#animals">Back to animals</a></p>' +
+    '<h2>' + (editing ? 'Edit animal record' : 'Add animal') + '</h2>' +
+    '<div id="formError"></div>' +
+    '<form id="af">' +
+    '<label>Animal ID</label><input id="f-id" value="' + a.id + '" readonly>' +
+    '<label>Name *</label><input id="f-name" value="' + clean(a.name) + '">' +
+    '<label>Species *</label><select id="f-species">' + options(["Dog", "Cat", "Rabbit", "Other"], a.species, true) + '</select>' +
+    '<label>Breed</label><input id="f-breed" value="' + clean(a.breed) + '">' +
+    '<label>Sex *</label><select id="f-sex">' + options(["Male", "Female", "Unknown"], a.sex, true) + '</select>' +
+    '<label>Age</label><input id="f-age" value="' + clean(a.age) + '">' +
+    '<label>Color</label><input id="f-color" value="' + clean(a.color) + '">' +
+    '<label>Intake date *</label><input id="f-intake" type="date" value="' + clean(a.intakeDate) + '">' +
+    '<label>Intake source *</label><select id="f-src">' + options(["County animal control", "Owner surrender"], a.intakeSource, true) + '</select>' +
+    (editing ? '' : '<label>Location *</label><select id="f-place">' + options(PLACES, a.place, true) + '</select>' +
+      '<label>Foster home (if in a foster home)</label><select id="f-foster">' + fosterOptions(a.foster) + '</select>') +
+    '<label>Spayed / neutered</label><select id="f-fixed">' + options(["No", "Yes"], a.spayedNeutered) + '</select>' +
+    '<label>Rabies certificate current</label><select id="f-rabies">' + options(["No", "Yes"], a.rabiesCurrent) + '</select>' +
+    '<label>Status</label><input value="' + a.status + '" readonly> <small>Use Change status on the record.</small>' +
+    '<br><button type="submit">' + (editing ? 'Save changes' : 'Save animal record') + '</button>' +
+    '</form>'
+  );
+
+  document.getElementById("af").onsubmit = function () {
+    var data = {
+      name: val("f-name"), species: val("f-species"), breed: val("f-breed"), sex: val("f-sex"),
+      age: val("f-age"), color: val("f-color"), intakeDate: val("f-intake"), intakeSource: val("f-src"),
+      spayedNeutered: val("f-fixed"), rabiesCurrent: val("f-rabies")
+    };
+    var box = document.getElementById("formError");
+    var missing = data.name == "" || data.species == "" || data.sex == "" || data.intakeDate == "" || data.intakeSource == "";
+    if (!editing) {
+      data.place = val("f-place"); data.foster = val("f-foster");
+      if (data.place == "" || (data.place == "Foster home" && data.foster == "")) missing = true;
+    }
+    if (missing) {
+      box.innerHTML = '<div class="error">Please fill in all required fields (*). Pick a foster home if the location is Foster home.</div>';
+      window.scrollTo(0, 0);
+      return false;
+    }
+
+    if (!editing && !duplicateWarned) {
+      for (var i = 0; i < db.animals.length; i++) {
+        var x = db.animals[i];
+        if (x.name.toLowerCase() == data.name.toLowerCase() && x.species == data.species && x.intakeDate == data.intakeDate) {
+          duplicateWarned = true;
+          box.innerHTML = '<div class="error">This animal may already have a record: <a href="#animal/' + x.id + '">' + x.id + '</a>. Click Save again to add it anyway.</div>';
+          window.scrollTo(0, 0);
+          return false;
+        }
+      }
+    }
+
+    if (editing) {
+      for (var key in data) editing[key] = data[key];
+      message = "Record updated.";
+      saveData();
+      location.hash = "animal/" + editing.id;
+    } else {
+      data.id = "QR-" + db.nextId;
+      db.nextId++;
+      data.status = "Pending"; data.statusBy = currentUser.name; data.statusDate = today();
+      data.history = [{ date: data.intakeDate, place: data.place, foster: data.foster, by: currentUser.name, note: "Intake" }];
+      db.animals.push(data);
+      message = "Animal record saved. ID: " + data.id;
+      saveData();
+      location.hash = "animal/" + data.id;
+    }
+    return false;
+  };
+}
+
+// ---------- foster: my animals (Req 3) ----------
+// TODO: real notifications to Owen (text/email) later, right now it just shows on his page
+function minePage() {
+  if (currentUser.role != "Foster") { location.hash = "animals"; return; }
+  var rows = "";
+  for (var i = 0; i < db.animals.length; i++) {
+    var a = db.animals[i];
+    if (a.foster != currentUserId || a.status == "Adopted") continue;
+    var t = openHandoff(a.id);
+    rows += '<tr><td><a href="#animal/' + a.id + '">' + a.id + '</a></td><td>' + clean(a.name) + '</td><td>' + clean(a.species) + '</td><td>' + clean(a.place) + '</td><td>' + badge(a.status) + '</td><td>' +
+      (t ? 'Waiting for ' + clean(fosterName(t.to)) : '<button data-move="' + a.id + '">Update location</button>') + '</td></tr>';
+  }
+  var inc = "";
+  for (var j = 0; j < db.handoffs.length; j++) {
+    var t2 = db.handoffs[j];
+    if (t2.done || t2.to != currentUserId) continue;
+    var an = findAnimal(t2.animalId);
+    inc += '<tr><td>' + clean(an.name) + ' (' + an.id + ')</td><td>' + clean(fosterName(t2.from)) + '</td><td>' + clean(t2.date) + '</td><td>' + (isLate(t2) ? '<span class="late">Over 24 hours</span>' : 'New') + '</td><td><button data-confirm="' + t2.id + '">Confirm handoff</button></td></tr>';
+  }
+
+  var body = '<h2>My animals</h2>';
+  if (inc != "") body += '<h3>Handoffs to confirm</h3><p>Another foster is passing these animals to you. Confirm once the animal is with you.</p><table><tr><th>Animal</th><th>From</th><th>Date</th><th>Waiting</th><th></th></tr>' + inc + '</table><h3>Animals in my care</h3>';
+  body += rows == "" ? '<p>You do not have any animals right now.</p>' : '<table><tr><th>ID</th><th>Name</th><th>Species</th><th>Location</th><th>Status</th><th></th></tr>' + rows + '</table>';
+  layout(body);
+
+  var m = document.querySelectorAll("[data-move]");
+  for (var k = 0; k < m.length; k++) m[k].onclick = function () { location.hash = "move/" + this.getAttribute("data-move"); };
+  var c = document.querySelectorAll("[data-confirm]");
+  for (var n = 0; n < c.length; n++) c[n].onclick = function () { confirmHandoff(this.getAttribute("data-confirm")); };
+}
+
+function moveForm(id, error) {
+  var a = findAnimal(id);
+  if (!a) { location.hash = "mine"; return; }
+  if (currentUser.role != "Foster" || a.foster != currentUserId) { layout('<div class="error">You can only update animals that are in your care.</div>'); return; }
+  if (openHandoff(a.id)) { layout('<div class="error">' + clean(a.name) + ' already has a handoff waiting for confirmation.</div>'); return; }
+
+  layout(
+    '<p><a href="#mine">Back to my animals</a></p>' +
+    '<h2>Update location for ' + clean(a.name) + ' (' + a.id + ')</h2>' +
+    (error ? '<div class="error" id="err">' + error + '</div>' : '') +
+    '<p>Right now: ' + clean(a.place) + (a.place == "Foster home" ? ' (' + clean(fosterName(a.foster)) + ')' : '') + '</p>' +
+    '<form id="mf">' +
+    '<label for="m-where">New location *</label><select id="m-where">' +
+    '<option value="">Select</option><option value="mine">My foster home</option><option value="other">Another foster home (handoff)</option><option>Storefront</option><option>Partner vet clinic</option></select>' +
+    '<label for="m-to">Foster home (for a handoff)</label><select id="m-to">' + fosterOptions("", currentUserId) + '</select>' +
+    '<label for="m-date">Date of the move *</label><input id="m-date" type="date" value="' + today() + '">' +
+    '<label for="m-note">Note</label><input id="m-note">' +
+    '<br><button type="submit">Save</button></form>'
+  );
+
+  document.getElementById("mf").onsubmit = function () {
+    var where = val("m-where"), to = val("m-to"), date = val("m-date"), note = val("m-note");
+    if (where == "" || date == "") { moveForm(id, "Pick a location and a date."); return false; }
+    if (date > today()) { moveForm(id, "The date cannot be in the future."); return false; }
+    if (where == "other") {
+      if (!FOSTERS[to]) { moveForm(id, "That foster home is not in the system. Pick one from the list."); return false; }
+      var t = { id: "T-" + db.nextHandoff, animalId: a.id, from: currentUserId, to: to, date: date, created: Date.now(), done: false };
+      db.nextHandoff++;
+      db.handoffs.push(t);
+      addUpdate(currentUser.name + " started a handoff of " + a.name + " (" + a.id + ") to " + fosterName(to) + ".");
+      saveData();
+      message = "Handoff started. " + a.name + " stays with you in the system until " + fosterName(to) + " confirms. Owen has been notified.";
+      location.hash = "mine";
+      return false;
+    }
+    var place = where == "mine" ? "Foster home" : where;
+    if (PLACES.indexOf(place) < 0) { moveForm(id, "That location is not in the system."); return false; }
+    a.place = place;
+    a.history.push({ date: date, place: place, foster: a.foster, by: currentUser.name, note: note });
+    addUpdate(currentUser.name + " moved " + a.name + " (" + a.id + ") to " + (place == "Foster home" ? fosterName(a.foster) : place) + ".");
+    saveData();
+    message = a.name + "'s location is now " + place + ". Owen has been notified.";
+    location.hash = "mine";
+    return false;
+  };
+}
+
+function confirmHandoff(tid) {
+  for (var i = 0; i < db.handoffs.length; i++) {
+    var t = db.handoffs[i];
+    if (t.id != tid || t.done || t.to != currentUserId) continue;
+    var a = findAnimal(t.animalId);
+    t.done = true;
+    a.foster = t.to;
+    a.place = "Foster home";
+    a.history.push({ date: today(), place: "Foster home", foster: t.to, by: currentUser.name, note: "Handoff from " + fosterName(t.from) + " confirmed" });
+    addUpdate(currentUser.name + " confirmed the handoff of " + a.name + " (" + a.id + ") from " + fosterName(t.from) + ".");
+    saveData();
+    message = "Handoff confirmed. " + a.name + " is now in your care.";
+    minePage();
+    return;
+  }
+}
+
+// ---------- foster coordinator: foster updates ----------
+function locationsPage() {
+  if (!can("locations")) { layout('<div class="error">Only the foster coordinator and coordinators can see foster updates.</div>'); return; }
+  var late = "", pend = "";
+  for (var i = 0; i < db.handoffs.length; i++) {
+    var t = db.handoffs[i];
+    if (t.done) continue;
+    var a = findAnimal(t.animalId);
+    var row = '<tr><td><a href="#animal/' + a.id + '">' + clean(a.name) + ' (' + a.id + ')</a></td><td>' + clean(fosterName(t.from)) + '</td><td>' + clean(fosterName(t.to)) + '</td><td>' + showDate(t.created) + '</td><td>' + (isLate(t) ? '<span class="late">Not confirmed after 24 hours</span>' : 'Waiting') + '</td></tr>';
+    if (isLate(t)) late += row; else pend += row;
+  }
+  var where = "";
+  for (var j = 0; j < db.animals.length; j++) {
+    var an = db.animals[j];
+    if (an.status == "Adopted") continue;
+    where += '<tr><td><a href="#animal/' + an.id + '">' + an.id + '</a></td><td>' + clean(an.name) + '</td><td>' + clean(an.place) + '</td><td>' + clean(fosterName(an.foster)) + '</td><td>' + clean(an.history[an.history.length - 1].date) + '</td></tr>';
+  }
+  var ups = "";
+  for (var k = db.updates.length - 1; k >= 0 && k >= db.updates.length - 10; k--) ups += '<li>' + showDate(db.updates[k].time) + ': ' + clean(db.updates[k].text) + '</li>';
+
+  layout(
+    '<h2>Foster updates</h2>' +
+    (late != "" ? '<div class="note">Some handoffs have not been confirmed after 24 hours. The animal stays with the first foster until it is confirmed.</div>' : '') +
+    '<h3>Handoffs waiting for confirmation</h3>' +
+    (late + pend == "" ? '<p>None.</p>' : '<table><tr><th>Animal</th><th>From</th><th>To</th><th>Started</th><th>State</th></tr>' + late + pend + '</table>') +
+    '<h3>Where every animal is</h3><table><tr><th>ID</th><th>Name</th><th>Location</th><th>Foster</th><th>Since</th></tr>' + where + '</table>' +
+    '<h3>Latest updates</h3><ul>' + (ups || '<li>None yet.</li>') + '</ul>'
+  );
+}
+
+// ---------- place hold ----------
+function holdForm(id) {
+  var a = findAnimal(id);
+  if (!a) { location.hash = "animals"; return; }
+  if (!can("hold")) { layout('<div class="error">You cannot place adoption holds.</div>'); return; }
+  if (a.status != "Available") { animalPage(id, clean(a.name) + " cannot be placed on hold because the status is " + a.status + "."); return; }
+
+  layout(
+    '<p><a href="#animal/' + a.id + '">Back to record</a></p>' +
+    '<h2>Adoption hold for ' + clean(a.name) + ' (' + a.id + ')</h2>' +
+    '<p>A hold lasts ' + HOLD_HOURS + ' hours.</p>' +
+    '<div id="formError"></div>' +
+    '<form id="hf">' +
+    '<label>Adopter name *</label><input id="h-name">' +
+    '<label>Phone *</label><input id="h-phone">' +
+    '<label>Email</label><input id="h-email">' +
+    '<label>Visit</label><select id="h-visit"><option>Saturday adoption event</option><option>Meet at storefront</option><option>Meet at foster home</option></select>' +
+    '<br><button type="submit">Place hold</button>' +
+    '</form>'
+  );
+
+  document.getElementById("hf").onsubmit = function () {
+    if (val("h-name") == "" || val("h-phone") == "") {
+      document.getElementById("formError").innerHTML = '<div class="error">Adopter name and phone are required.</div>';
+      return false;
+    }
+    var hold = {
+      holdId: "H-" + db.nextHold, animalId: a.id, adopter: val("h-name"), phone: val("h-phone"),
+      email: val("h-email"), visit: val("h-visit"), placedBy: currentUser.name,
+      expires: Date.now() + HOLD_HOURS * HOUR, active: true
+    };
+    db.nextHold++;
+    db.holds.push(hold);
+    a.status = "On Hold"; a.statusBy = currentUser.name; a.statusDate = today();
+    saveData();
+    message = "Hold " + hold.holdId + " placed. " + a.name + " is now On Hold.";
+    location.hash = "animal/" + a.id;
+    return false;
+  };
+}
+
+// ---------- active holds ----------
+function holdsPage() {
+  if (!can("holds")) { layout('<div class="error">Only coordinators can view active holds.</div>'); return; }
+  var rows = "";
+  for (var i = 0; i < db.holds.length; i++) {
+    var h = db.holds[i];
+    if (!h.active) continue;
+    var a = findAnimal(h.animalId);
+    rows += '<tr><td>' + h.holdId + '</td><td><a href="#animal/' + h.animalId + '">' + clean(a ? a.name : "") + ' (' + h.animalId + ')</a></td><td>' + clean(h.adopter) + '</td><td>' + clean(h.phone) + '</td><td>' + clean(h.visit) + '</td><td>' + clean(h.placedBy) + '</td><td>' + hoursLeft(h) + '</td><td><button data-rel="' + h.holdId + '">Release</button></td></tr>';
+  }
+  var body = '<h2>Active holds</h2>';
+  body += rows == "" ? '<p>There are no active holds.</p>' : '<table><tr><th>Hold</th><th>Animal</th><th>Adopter</th><th>Phone</th><th>Visit</th><th>Placed by</th><th>Time left</th><th></th></tr>' + rows + '</table>';
+  layout(body);
+  var buttons = document.querySelectorAll("[data-rel]");
+  for (var b = 0; b < buttons.length; b++) buttons[b].onclick = function () { releaseHold(this.getAttribute("data-rel")); };
+}
+
+function releaseHold(holdId) {
+  for (var i = 0; i < db.holds.length; i++) {
+    var h = db.holds[i];
+    if (h.holdId == holdId) {
+      if (!confirm("Release hold " + h.holdId + " for " + h.adopter + "?")) return;
+      h.active = false;
+      var a = findAnimal(h.animalId);
+      if (a) { a.status = "Available"; a.statusBy = currentUser.name; a.statusDate = today(); }
+      saveData();
+      message = "Hold " + h.holdId + " released. " + (a ? a.name : "The animal") + " is now Available.";
+      holdsPage();
+      return;
+    }
+  }
+}
+
+// ---------- router ----------
+function show() {
+  if (!currentUser) { loginPage(); return; }
+  var parts = location.hash.replace("#", "").split("/");
+  window.scrollTo(0, 0);
+  if (parts[0] == "animal") animalPage(parts[1]);
+  else if (parts[0] == "add") { duplicateWarned = false; animalForm(null); }
+  else if (parts[0] == "edit") animalForm(parts[1]);
+  else if (parts[0] == "status") statusForm(parts[1]);
+  else if (parts[0] == "hold") holdForm(parts[1]);
+  else if (parts[0] == "holds") holdsPage();
+  else if (parts[0] == "mine") minePage();
+  else if (parts[0] == "move") moveForm(parts[1]);
+  else if (parts[0] == "locations") locationsPage();
+  else if (currentUser.role == "Foster" && parts[0] == "") minePage();
+  else animalsPage();
+}
+
+loadData();
+try {
+  var savedUser = sessionStorage.getItem("qrrms-user");
+  if (savedUser && USERS[savedUser]) { currentUserId = savedUser; currentUser = USERS[savedUser]; }
+} catch (e) {}
+window.onhashchange = function () { if (currentUser) show(); };
+show();
+</script>
+</body>
+</html>
